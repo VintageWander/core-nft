@@ -1,0 +1,17 @@
+{
+  "scripts": {
+    "build": "npx tsc",
+    "dev": "npx ts-node-dev --respawn ./src/main.ts"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.7",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@metaplex-foundation/mpl-core": "^1.0.2",
+    "@metaplex-foundation/umi": "^0.9.2",
+    "@metaplex-foundation/umi-bundle-defaults": "^0.9.2",
+    "@metaplex-foundation/umi-uploader-irys": "^0.9.2"
+  }
+}
