@@ -5,7 +5,6 @@ import {
   generateSigner,
   publicKey,
   signerIdentity,
-  some,
 } from "@metaplex-foundation/umi";
 import { readFile } from "fs/promises";
 import { irysUploader } from "@metaplex-foundation/umi-uploader-irys";
@@ -18,22 +17,50 @@ import {
   fetchAssetV1,
   thawAsset,
   fetchAsset,
+  burn,
 } from "@metaplex-foundation/mpl-core";
+import { Connection } from "@solana/web3.js";
+import wallet from "/Users/wander/.config/solana/id.json";
 
 const umi = createUmi("https://api.devnet.solana.com", "finalized");
 umi.use(irysUploader());
 
-import wallet from "/Users/wander/.config/solana/id.json";
 let keypair = umi.eddsa.createKeypairFromSecretKey(new Uint8Array(wallet));
 const myKeypairSigner = createSignerFromKeypair(umi, keypair);
+
 umi.use(signerIdentity(myKeypairSigner));
+
+// Monkey patch the Connection prototype
+Connection.prototype.getRecentBlockhash = async function (commitment) {
+  try {
+    const { blockhash, lastValidBlockHeight } = await this.getLatestBlockhash(
+      commitment
+    );
+    const recentPrioritizationFees = await this.getRecentPrioritizationFees();
+    const averageFee =
+      recentPrioritizationFees.length > 0
+        ? recentPrioritizationFees.reduce(
+            (sum, fee) => sum + fee.prioritizationFee,
+            0
+          ) / recentPrioritizationFees.length
+        : 5000;
+
+    return {
+      blockhash,
+      feeCalculator: {
+        lamportsPerSignature: averageFee,
+      },
+    };
+  } catch (e) {
+    throw new Error("failed to get recent blockhash: " + e);
+  }
+};
 
 (async function () {
   const certImage = createGenericFile(
     await readFile("./src/cert-1.jpg"),
     "cert-1-nft.jpg"
   );
-
   const [certImageUri] = await umi.uploader.upload([certImage]);
   console.log(certImageUri);
 
@@ -81,4 +108,12 @@ umi.use(signerIdentity(myKeypairSigner));
   //   newOwner: publicKey("Gq5jLjER...Mt4uf4NJB"),
   // }).sendAndConfirm(umi);
   // console.log("Transfer success");
-})().catch(console.error);
+
+  // await burn(umi, {
+  //   asset: await fetchAsset(
+  //     umi,
+  //     "9xQoJ1anaH2JXmThZt8EwdpoET3a3fae5aJUGKCSnUuf"
+  //   ),
+  // }).sendAndConfirm(umi);
+  // console.log("Burn success");
+})().catch(console.trace);
